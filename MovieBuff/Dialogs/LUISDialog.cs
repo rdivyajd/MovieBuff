@@ -78,30 +78,54 @@ namespace MovieBuff.Dialogs
 
             //Getting data using State Information
             context.UserData.TryGetValue<List<int>>("movieList", out vli);
-            li = vli;
+
+            if(vli != null)
+             li = vli;
 
             while (true)
             {
                 int r = getRandomNumber();
 
+                if (li.Count == 200)
+                {
+                    li = new List<int>();
+                    context.UserData.SetValue<List<int>>("movieList", li);
+                }
+
                 if (!li.Contains(r))
                 {
-                    dr = dt.Rows[r];
+                    dr = dt.Rows[r];                    
                     li.Add(r);
                     context.UserData.SetValue<List<int>>("movieList", li);
                     break;
                 }
 
                 else
-                    continue;
+                    continue;                
             }
-
-            var movieCard = GetThumbnailCard();
-
+            
+            //To show the movie as a card
+            var imdbMovieCard = GetMovieCard(dr["Title"].ToString().Trim(), dr["Year"].ToString().Trim(), dr["Runtime"].ToString().Trim(), dr["Genre"].ToString().Trim(), dr["Plot"].ToString().Trim(), dr["Language"].ToString().Trim(), dr["Poster"].ToString().Trim(), dr["rating"].ToString().Trim(), dr["imdb_title"].ToString().Trim(), dr["tomatoURL"].ToString().Trim());
             var msg = context.MakeMessage();
-            msg.Attachments.Add(movieCard);
+            msg.Attachments.Add(imdbMovieCard);
             await context.PostAsync(msg);
+
             return;
+        }
+
+        private static Attachment GetMovieCard(string movie_title, string year, string runtime, string genre, string plot, string language, string poster, string rating, string imdb_title, string rtURL)
+        {
+            var movieCard = new HeroCard
+            {
+                Title = movie_title,
+                Subtitle = "Genre: " + genre +  " Year: " + year + " Runtime: " + runtime + " Language(s): " + language + " IMDb Rating: " + rating,
+                Text = plot,
+                Images = new List<CardImage> { new CardImage(url: poster) },
+                Buttons = new List<CardAction> { new CardAction(ActionTypes.OpenUrl, "See on IMDb", value: "http://www.imdb.com/title/" + imdb_title),
+                                                 new CardAction(ActionTypes.OpenUrl, "See on Rotten Tomatoes", value: rtURL) }
+            };
+
+            return movieCard.ToAttachment();
         }
 
         // Function to generate random numbers
@@ -111,20 +135,5 @@ namespace MovieBuff.Dialogs
             return movieRank.Next(min, max);
 
         }
-
-        private static Attachment GetThumbnailCard()
-        {
-            var heroCard = new HeroCard
-            {
-                Title = "Pulp Fiction",
-                //Subtitle = "Your bots — wherever your users are talking",
-                Text = "Build and connect intelligent bots to interact with your users naturally wherever they are, from text/sms to Skype, Slack, Office 365 mail and other popular services.",
-                Images = new List<CardImage> { new CardImage(url: "https://images-na.ssl-images-amazon.com/images/M/MV5BODU4MjU4NjIwNl5BMl5BanBnXkFtZTgwMDU2MjEyMDE@._V1_UX182_CR0,0,182,268_AL_.jpg") },
-                Buttons = new List<CardAction> { new CardAction(ActionTypes.OpenUrl, "See on IMDB", value: "https://docs.microsoft.com/bot-framework") }
-            };
-            
-            return heroCard.ToAttachment();
-        }
-
     }
 }
