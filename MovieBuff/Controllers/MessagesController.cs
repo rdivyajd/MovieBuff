@@ -6,7 +6,8 @@ using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Connector;
 using MovieBuff.Models;
 using MovieBuff.Dialogs;
-
+using System;
+using System.Linq;
 
 namespace MovieBuff
 {
@@ -31,36 +32,54 @@ namespace MovieBuff
             return response;
         }
 
-        internal static IDialog<UserInformation> MakeLuisDialog()
+        internal static IDialog<MovieInformation> MakeLuisDialog()
         {
-            return Chain.From(() => new LUISDialog(UserInformation.BuildForm));
+            return Chain.From(() => new LUISDialog(MovieInformation.BuildForm()));
         }
+
 
         private Activity HandleSystemMessage(Activity message)
         {
-            //if (message.Type == ActivityTypes.DeleteUserData)
-            //{
-            //    // Implement user deletion here
-            //    // If we handle user deletion, return a real message
-            //}
-            //else if (message.Type == ActivityTypes.ConversationUpdate)
-            //{
-            //    // Handle conversation state changes, like members being added and removed
-            //    // Use Activity.MembersAdded and Activity.MembersRemoved and Activity.Action for info
-            //    // Not available in all channels
-            //}
-            //else if (message.Type == ActivityTypes.ContactRelationUpdate)
-            //{
-            //    // Handle add/remove from contact lists
-            //    // Activity.From + Activity.Action represent what happened
-            //}
-            //else if (message.Type == ActivityTypes.Typing)
-            //{
-            //    // Handle knowing that the user is typing
-            //}
-            //else if (message.Type == ActivityTypes.Ping)
-            //{
-            //}
+            if (message.Type == ActivityTypes.DeleteUserData)
+            {
+                // Implement user deletion here
+                // If we handle user deletion, return a real message
+            }
+            else if (message.Type == ActivityTypes.ConversationUpdate)
+            {
+                // Handle conversation state changes, like members being added and removed
+                // Use Activity.MembersAdded and Activity.MembersRemoved and Activity.Action for info
+                // Not available in all channels
+
+                // Custom Welcome Message
+                IConversationUpdateActivity update = message;
+                var client = new ConnectorClient(new Uri(message.ServiceUrl), new MicrosoftAppCredentials());
+                if (update.MembersAdded != null && update.MembersAdded.Any())
+                {
+                    foreach (var newMember in update.MembersAdded)
+                    {
+                        if (newMember.Id != message.Recipient.Id)
+                        {
+                            var reply = message.CreateReply();
+                            reply.Text = $"Welcome User!";
+                            client.Conversations.ReplyToActivityAsync(reply);
+                        }
+                    }
+                }
+
+            }
+            else if (message.Type == ActivityTypes.ContactRelationUpdate)
+            {
+                // Handle add/remove from contact lists
+                // Activity.From + Activity.Action represent what happened
+            }
+            else if (message.Type == ActivityTypes.Typing)
+            {
+                // Handle knowing that the user is typing
+            }
+            else if (message.Type == ActivityTypes.Ping)
+            {
+            }
             return null;
         }
     }
