@@ -10,20 +10,19 @@ namespace MovieBuff.Dialogs
     public class RootDialog : IDialog<object>
     {
         public async Task StartAsync(IDialogContext context)
-        {
+        {   
+            
             await Respond(context);
-            context.Wait(MessageReceivedAsync);
-            //return Task.CompletedTask;
+            context.Wait(MessageReceivedAsync);            
         }
 
         private async Task MessageReceivedAsync(IDialogContext context, IAwaitable<object> result)
         {
             var activity = await result as Activity;
             var userName = String.Empty; //To Store Name of the User
-            var getName = false;
-            
+
             context.UserData.TryGetValue<string>("Name", out userName);
-            context.UserData.TryGetValue<bool>("GetName", out getName);
+            context.UserData.TryGetValue<bool>("GetName", out bool getName);
             
             if (getName)
             {
@@ -50,6 +49,24 @@ namespace MovieBuff.Dialogs
             {
                 await context.PostAsync(String.Format("Hey {0}. Are you looking for some movie recommendations?", userName));
             }
+        }
+
+        private static async Task endConversation(IDialogContext context)
+        {
+            var userName = String.Empty;
+            context.UserData.TryGetValue<string>("Name", out userName);
+            if (string.IsNullOrEmpty(userName))
+            {
+                await context.PostAsync($"Hello, I'm the MovieBuff Bot!");
+                await context.PostAsync("What is your name?");
+                context.UserData.SetValue<bool>("GetName", true);
+            }
+            else
+            {
+                await context.PostAsync($"Bye {userName}, thank you");
+                context.EndConversation(code: "");
+            }
+
         }
     }
 }

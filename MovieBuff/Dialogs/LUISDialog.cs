@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Data.OleDb;
 using System.IO;
 using System.Data;
+using System.Linq;
 
 namespace MovieBuff.Dialogs
 {
@@ -17,6 +18,8 @@ namespace MovieBuff.Dialogs
 
     public class LUISDialog : LuisDialog<MovieInformation>
     {
+        string FileName = "C:/Users/user/source/repos/MovieBuff/MovieBuff/Data/movie_data.csv";
+
         //Default Constructor
         public LUISDialog(object buildForm)
         {
@@ -34,6 +37,7 @@ namespace MovieBuff.Dialogs
             context.UserData.TryGetValue<string>("Name", out userName);
 
             await context.PostAsync($"Hey {userName}. I am here to make movie recommendations! Just say \"movies\"");
+            await context.PostAsync($"To search for a movie use \"search <movie-name>\"");
             //await context.PostAsync("I am here to suggest you movies!");
             context.Wait(MessageReceived);
         }
@@ -56,13 +60,88 @@ namespace MovieBuff.Dialogs
             context.Wait(MessageReceived);
         }
 
+        [LuisIntent("search")]
+        public async Task movieSearch(IDialogContext context, LuisResult result)
+        {
+            var activity = result.Query.ToLower().Trim();
+            List<DataRow> dr_li = new List<DataRow>();
+
+            if (activity.Equals("search"))
+            {
+                var msg = context.MakeMessage().Text = "To search for a movie use \"search <movie-name>\"";
+                await context.PostAsync(msg);
+                return;
+            }
+
+            else
+            {
+                var query = activity.Substring(7);
+
+                OleDbConnection conn = GetConnection();
+
+                conn.Open();
+                OleDbDataAdapter adapter = new OleDbDataAdapter("SELECT * FROM " + Path.GetFileName(FileName), conn);
+
+                DataTable dt = new DataTable("movie_data");
+                adapter.Fill(dt);
+
+                conn.Close();
+
+                foreach(DataRow dr in dt.Rows)
+                {
+                    if (dr[1].ToString().Trim().ToLower().Split(separator: new char[]{' ','-',','}).Contains(query))
+                    {
+                        dr_li.Add(dr);
+                    }
+                }
+
+                if(dr_li.Count > 0)
+                {
+                    foreach(DataRow movie_dr in dr_li)
+                    {
+                        var imdbMovieCard = GetMovieCard(movie_dr["Title"].ToString().Trim(), movie_dr["Year"].ToString().Trim(), movie_dr["Runtime"].ToString().Trim(), movie_dr["Genre"].ToString().Trim(), movie_dr["Plot"].ToString().Trim(), movie_dr["Language"].ToString().Trim(), movie_dr["Poster"].ToString().Trim(), movie_dr["rating"].ToString().Trim(), movie_dr["imdb_title"].ToString().Trim(), movie_dr["tomatoURL"].ToString().Trim());
+                        var msg = context.MakeMessage();
+                        msg.Attachments.Add(imdbMovieCard);
+                        msg.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+                        await context.PostAsync(msg);
+                    }
+                }
+
+                else
+                {
+                    var msg = context.MakeMessage().Text = "Sorry couldn't find the movie you were looking for!";
+                    await context.PostAsync(msg);
+                    return;
+                }
+            }
+
+        }
+
+        [LuisIntent("endConversation")]
+        public async Task endConversation(IDialogContext context, LuisResult result)
+        {
+            var userName = String.Empty;
+            context.UserData.TryGetValue<string>("Name", out userName);
+            context.EndConversation($"Bye {userName}");
+        }
+
+        //Method to get connection
+        private static OleDbConnection GetConnection()
+        {
+            string FilePath = "C:/Users/user/source/repos/MovieBuff/MovieBuff/Data/movie_data.csv";
+
+            OleDbConnection conn = new OleDbConnection("Provider=Microsoft.Jet.OleDb.4.0; Data Source = " +
+            Path.GetDirectoryName(FilePath) + "; Extended Properties = \"Text;HDR=YES;FMT=Delimited\"");
+
+            return conn;
+        }
+
         [LuisIntent("movieSuggestion")]
         public async Task UserInformation(IDialogContext context, LuisResult result)
         {
-            string FileName = "C:/Users/user/source/repos/MovieBuff/MovieBuff/Data/movie_data.csv";
+            var activity = result.Query;
 
-            OleDbConnection conn = new OleDbConnection("Provider=Microsoft.Jet.OleDb.4.0; Data Source = " +
-            Path.GetDirectoryName(FileName) + "; Extended Properties = \"Text;HDR=YES;FMT=Delimited\"");
+            OleDbConnection conn = GetConnection();
 
             conn.Open();
             OleDbDataAdapter adapter = new OleDbDataAdapter("SELECT * FROM " + Path.GetFileName(FileName), conn);
@@ -109,13 +188,12 @@ namespace MovieBuff.Dialogs
             var msg = context.MakeMessage();
             msg.Attachments.Add(imdbMovieCard);
             await context.PostAsync(msg);
-
             return;
         }
 
         private static Attachment GetMovieCard(string movie_title, string year, string runtime, string genre, string plot, string language, string poster, string rating, string imdb_title, string rtURL)
         {
-            var movieCard = new HeroCard
+            var movieCard = new ThumbnailCard
             {
                 Title = movie_title,
                 Subtitle = "Genre: " + genre +  " Year: " + year + " Runtime: " + runtime + " Language(s): " + language + " IMDb Rating: " + rating,
