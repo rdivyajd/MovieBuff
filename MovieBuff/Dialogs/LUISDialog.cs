@@ -122,7 +122,9 @@ namespace MovieBuff.Dialogs
         {
             var userName = String.Empty;
             context.UserData.TryGetValue<string>("Name", out userName);
-            context.EndConversation($"Bye {userName}");
+            var msg = context.MakeMessage().Text = "Thank you for using MovieBuff,  " + userName;
+            await context.PostAsync(msg);
+            return;
         }
 
         //Method to get connection
