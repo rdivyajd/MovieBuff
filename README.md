@@ -1,7 +1,2 @@
 # MovieBuff
-# Final Project
-# Data Semantics
-# Indiana University Bloomington
-# INFO I-590
-# Pramod Duvvuri and Divya Rajendran
-# Fall 2017
+This is a chatbot built using Microsoft Bot Framework. This chatbot provides movie suggestions from the Top 250 movies on IMDb.
